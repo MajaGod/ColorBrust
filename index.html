@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw & Trace App</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #drawingCanvas {
+            border: 1px solid black;
+            background: white;
+            width: 100%;
+            height: 100%;
+        }
+        #backgroundImage {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        .controls {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 150px;
+            height: 100vh;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s ease;
+        }
+        .controls.collapsed {
+            transform: translateX(-100%);
+        }
+        #toggleControls {
+            position: absolute;
+            top: 10px;
+            left: 160px;
+            width: 30px;
+            height: 30px;
+            font-size: 20px;
+            padding: 0;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        button, input {
+            margin: 5px 0;
+            padding: 5px 10px;
+            width: 100px;
+            text-align: center;
+        }
+        .brush-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+            padding: 0;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+        }
+        .brush-btn.active {
+            background-color: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        #colorWheel {
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        #brushPreview {
+            border: 1px solid #ccc;
+            border-radius: 50%;
+        }
+        label {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <img id="backgroundImage" src="" alt="Trace Image">
+        <canvas id="drawingCanvas"></canvas>
+    </div>
+    <div class="controls">
+        <input type="file" id="imageUpload" accept="image/*">
+        <button onclick="clearCanvas()">Clear Canvas</button>
+        <button onclick="saveCanvas()">Save</button>
+        <canvas id="colorWheel" width="100" height="100"></canvas>
+        <label>Tools:</label>
+        <button id="pencilBtn" class="brush-btn active" onclick="setBrushType('pencil')" title="Pencil">✏️</button>
+        <button id="markerBtn" class="brush-btn" onclick="setBrushType('marker')" title="Marker">🖌️</button>
+        <button id="eraserBtn" class="brush-btn" onclick="setBrushType('eraser')" title="Eraser">🖍️</button>
+        <button id="fillBtn" class="brush-btn" onclick="setBrushType('fill')" title="Fill Bucket">🪣</button>
+        <label for="brushSize">Brush Size:</label>
+        <input type="range" id="brushSize" min="1" max="20" value="2">
+        <canvas id="brushPreview" width="40" height="40"></canvas>
+    </div>
+    <button id="toggleControls">⬅️</button>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        let drawing = false;
+        let currentColor = 'black';
+        let currentBrushSize = 2;
+        let currentBrushType = 'pencil';
+
+        // Set drawing canvas size to full viewport
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Mouse events for drawing
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', startDrawing);
+        canvas.addEventListener('touchmove', draw);
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function startDrawing(e) {
+            drawing = true;
+            if (currentBrushType === 'fill') {
+                floodFill(e);
+                drawing = false;
+            } else {
+                draw(e);
+            }
+        }
+
+        function stopDrawing() {
+            drawing = false;
+            ctx.beginPath();
+        }
+
+        function draw(e) {
+            if (!drawing || currentBrushType === 'fill') return;
+
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || e.touches[0].clientX) - rect.left;
+            const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+            ctx.lineWidth = currentBrushSize;
+            ctx.lineCap = 'round';
+
+            if (currentBrushType === 'pencil') {
+                ctx.strokeStyle = currentColor;
+                ctx.globalAlpha = 0.5;
+                ctx.lineCap = 'round';
+            } else if (currentBrushType === 'marker') {
+                ctx.strokeStyle = currentColor;
+                ctx.globalAlpha = 1.0;
+                ctx.lineCap = 'square';
+            } else if (currentBrushType === 'eraser') {
+                ctx.strokeStyle = 'white';
+                ctx.globalAlpha = 1.0;
+                ctx.lineCap = 'round';
+            }
+
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        // Flood fill function
+        function floodFill(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX || e.touches[0].clientX) - rect.left);
+            const y = Math.floor((e.clientY || e.touches[0].clientY) - rect.top);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            const targetColor = getPixelColor(data, x, y);
+            const fillColor = rgbStringToArray(currentColor);
+
+            if (colorsMatch(targetColor, fillColor)) return;
+
+            const stack = [[x, y]];
+            while (stack.length) {
+                const [cx, cy] = stack.pop();
+                if (cx < 0 || cx >= canvas.width || cy < 0 || cy >= canvas.height) continue;
+
+                const currentColorAtPixel = getPixelColor(data, cx, cy);
+                if (colorsMatch(currentColorAtPixel, targetColor)) {
+                    setPixelColor(data, cx, cy, fillColor);
+                    stack.push([cx + 1, cy]);
+                    stack.push([cx - 1, cy]);
+                    stack.push([cx, cy + 1]);
+                    stack.push([cx, cy - 1]);
+                }
+            }
+
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        function getPixelColor(data, x, y) {
+            const index = (y * canvas.width + x) * 4;
+            return [data[index], data[index + 1], data[index + 2], data[index + 3]];
+        }
+
+        function setPixelColor(data, x, y, color) {
+            const index = (y * canvas.width + x) * 4;
+            data[index] = color[0];
+            data[index + 1] = color[1];
+            data[index + 2] = color[2];
+            data[index + 3] = 255;
+        }
+
+        function colorsMatch(c1, c2) {
+            return c1[0] === c2[0] && c1[1] === c2[1] && c1[2] === c2[2] && c1[3] === c2[3];
+        }
+
+        function rgbStringToArray(rgb) {
+            const match = rgb.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+            if (match) {
+                return [parseInt(match[1]), parseInt(match[2]), parseInt(match[3]), 255];
+            }
+            return [0, 0, 0, 255];
+        }
+
+        // Save canvas as image (only the traced content, not the background image)
+        function saveCanvas() {
+            const dataURL = canvas.toDataURL('image/png'); // Captures only #drawingCanvas content
+            const link = document.createElement('a');
+            link.href = dataURL;
+            link.download = 'traced_image.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Handle image upload for tracing
+        const imageUpload = document.getElementById('imageUpload');
+        const bgImage = document.getElementById('backgroundImage');
+
+        imageUpload.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    bgImage.src = event.target.result;
+                    redrawCanvas();
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Clear the canvas
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (bgImage.src) {
+                redrawCanvas();
+            }
+        }
+
+        // Redraw canvas content (for tracing image display, not saved)
+        function redrawCanvas() {
+            const tempImage = new Image();
+            tempImage.src = bgImage.src;
+            tempImage.onload = function() {
+                ctx.drawImage(tempImage, 0, 0, canvas.width, canvas.height);
+            };
+        }
+
+        // Color wheel setup with willReadFrequently
+        const colorWheel = document.getElementById('colorWheel');
+        const colorCtx = colorWheel.getContext('2d', { willReadFrequently: true });
+        const radius = colorWheel.width / 2;
+
+        function drawColorWheel() {
+            const centerX = radius;
+            const centerY = radius;
+            for (let angle = 0; angle < 360; angle++) {
+                const rad = (angle * Math.PI) / 180;
+                const gradient = colorCtx.createRadialGradient(
+                    centerX, centerY, 0, centerX, centerY, radius
+                );
+                gradient.addColorStop(0, 'white');
+                gradient.addColorStop(1, `hsl(${angle}, 100%, 50%)`);
+
+                colorCtx.beginPath();
+                colorCtx.moveTo(centerX, centerY);
+                colorCtx.arc(centerX, centerY, radius, rad, rad + 0.1);
+                colorCtx.closePath();
+                colorCtx.fillStyle = gradient;
+                colorCtx.fill();
+            }
+        }
+        drawColorWheel();
+
+        // Pick color from wheel
+        colorWheel.addEventListener('click', function(e) {
+            const rect = colorWheel.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const imageData = colorCtx.getImageData(x, y, 1, 1).data;
+            currentColor = `rgb(${imageData[0]}, ${imageData[1]}, ${imageData[2]})`;
+            updateBrushPreview();
+        });
+
+        // Brush type selection
+        function setBrushType(type) {
+            currentBrushType = type;
+            updateBrushPreview();
+            document.querySelectorAll('.brush-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.getElementById(`${type}Btn`).classList.add('active');
+        }
+
+        // Brush size slider
+        const brushSize = document.getElementById('brushSize');
+        brushSize.addEventListener('input', function(e) {
+            currentBrushSize = parseInt(e.target.value);
+            updateBrushPreview();
+        });
+
+        // Brush preview setup
+        const brushPreview = document.getElementById('brushPreview');
+        const previewCtx = brushPreview.getContext('2d');
+
+        function updateBrushPreview() {
+            previewCtx.clearRect(0, 0, brushPreview.width, brushPreview.height);
+            previewCtx.beginPath();
+            if (currentBrushType === 'marker') {
+                const size = currentBrushSize;
+                previewCtx.rect(
+                    (brushPreview.width - size) / 2, 
+                    (brushPreview.height - size) / 2, 
+                    size, 
+                    size
+                );
+            } else if (currentBrushType === 'fill') {
+                previewCtx.fillStyle = currentColor;
+                previewCtx.fillRect(0, 0, brushPreview.width, brushPreview.height);
+            } else {
+                previewCtx.arc(
+                    brushPreview.width / 2, 
+                    brushPreview.height / 2, 
+                    currentBrushSize / 2, 
+                    0, 
+                    Math.PI * 2
+                );
+            }
+            if (currentBrushType !== 'fill') {
+                previewCtx.fillStyle = currentBrushType === 'eraser' ? 'white' : currentColor;
+                previewCtx.globalAlpha = currentBrushType === 'pencil' ? 0.5 : 1.0;
+                previewCtx.fill();
+            }
+        }
+        updateBrushPreview();
+
+        // Toggle controls collapse/expand with arrow icon
+        const controls = document.querySelector('.controls');
+        const toggleButton = document.getElementById('toggleControls');
+        let isCollapsed = false;
+
+        toggleButton.addEventListener('click', function() {
+            if (isCollapsed) {
+                controls.classList.remove('collapsed');
+                toggleButton.textContent = '⬅️';
+                toggleButton.style.left = '160px';
+            } else {
+                controls.classList.add('collapsed');
+                toggleButton.textContent = '➡️';
+                toggleButton.style.left = '10px';
+            }
+            isCollapsed = !isCollapsed;
+        });
+
+        // Initial resize
+        window.dispatchEvent(new Event('resize'));
+    </script>
+</body>
+</html>

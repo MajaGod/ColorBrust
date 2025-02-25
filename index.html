@@ -102,9 +102,11 @@
         <button onclick="saveCanvas()">Save</button>
         <canvas id="colorWheel" width="100" height="100"></canvas>
         <label>Tools:</label>
-        <button id="pencilBtn" class="brush-btn active" onclick="setBrushType('pencil')" title="Pencil">✏️</button>
-        <button id="markerBtn" class="brush-btn" onclick="setBrushType('marker')" title="Marker">🖌️</button>
-        <button id="eraserBtn" class="brush-btn" onclick="setBrushType('eraser')" title="Eraser">🖍️</button>
+        <button id="pencilBtn" class="brush-btn active" onclick="setBrushType('pencil')" title="Pencil">🖊️</button>
+        <button id="markerBtn" class="brush-btn" onclick="setBrushType('marker')" title="Marker">🎨</button>
+        <button id="eraserBtn" class="brush-btn" onclick="setBrushType('eraser')" title="Eraser">
+            <img src="images/myicon.png" alt="My Icon" width="32" height="32">
+        </button>
         <button id="fillBtn" class="brush-btn" onclick="setBrushType('fill')" title="Fill Bucket">🪣</button>
         <label for="brushSize">Brush Size:</label>
         <input type="range" id="brushSize" min="1" max="20" value="2">

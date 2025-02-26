@@ -15,6 +15,9 @@
             height: 100vh;
         }
         #drawingCanvas {
+ 	    position: absolute;
+            top: 0;
+            left: 0;
             border: 1px solid black;
             background: white;
             width: 100%;
@@ -89,6 +92,9 @@
         label {
             margin-bottom: 5px;
         }
+	.tool-icon{
+	    padding-top: 7px;
+	}
     </style>
 </head>
 <body>
@@ -102,17 +108,25 @@
         <button onclick="saveCanvas()">Save</button>
         <canvas id="colorWheel" width="100" height="100"></canvas>
         <label>Tools:</label>
-        <button id="pencilBtn" class="brush-btn active" onclick="setBrushType('pencil')" title="Pencil">🖊️</button>
-        <button id="markerBtn" class="brush-btn" onclick="setBrushType('marker')" title="Marker">🎨</button>
+        <button id="pencilBtn" class="brush-btn active" onclick="setBrushType('pencil')" title="Pencil">
+		<img src="images/pen-tool.png" alt="My Icon" width="25" height="25" class="tool-icon">
+	</button>
+        <button id="markerBtn" class="brush-btn" onclick="setBrushType('marker')" title="Marker">      
+		 <img src="images/paint-tool.png" alt="My Icon" width="25" height="25" class="tool-icon">
+	</button>
         <button id="eraserBtn" class="brush-btn" onclick="setBrushType('eraser')" title="Eraser">
-            <img src="images/myicon.png" alt="My Icon" width="32" height="32">
+            <img src="images/eraser-tool.png" alt="My Icon" width="25" height="25" class="tool-icon">
         </button>
-        <button id="fillBtn" class="brush-btn" onclick="setBrushType('fill')" title="Fill Bucket">🪣</button>
+        <button id="fillBtn" class="brush-btn" onclick="setBrushType('fill')" title="Fill Bucket">
+		<img src="images/fill-tool.png" alt="My Icon" width="25" height="25" class="tool-icon">
+	</button>
         <label for="brushSize">Brush Size:</label>
         <input type="range" id="brushSize" min="1" max="20" value="2">
         <canvas id="brushPreview" width="40" height="40"></canvas>
     </div>
-    <button id="toggleControls">⬅️</button>
+    <button id="toggleControls">
+		<img src="images/arrow-icon.png" alt="My Icon" width="25" height="25" 
+	</button>
 
     <script>
         const canvas = document.getElementById('drawingCanvas');
